@@ -7,6 +7,7 @@ import constants1
 import os
 import random
 import urllib.request as urllib2
+from alphabet_detector import AlphabetDetector  # библеотека опрелеяет тип букв. Мне нужны иврит и кириллица
 import xlrd
 import json
 import fsm_telebot
@@ -249,74 +250,122 @@ def handle_text(message):
 @bot.message_handler(content_types=['text'])
 def handle_text(message):
     alert_new_user(message)
-    mes = message.text
-    mes = mes.lower() # Все буквы меняем на мленькие
-    mes = mes.split(',')  # разделяем по запятой смс-запрос
-    status_searching = 'Ответа в файле нет.'
-    if '*' in mes:
+    ad = AlphabetDetector()
+
+
+    if '*' in message.text:
         bot.send_message(message.chat.id, 'Я не знаю такого символа * . Введите запрос заново.', parse_mode='Markdown')
-    id_maybe_answer_links = []
-    tx_maybe_answer_links = []
-    id_answer_links = [] #Это нужный список, туда будем добавлять, все верное.
-    for one_word in mes:
-        one_word = one_word.lstrip()  # убрали пробелы вначале текста в смс-запросе
-        for row in range(2, 4307): # Открываем каждую строку поочереди начиная со третей строки (шапку не читаем). Сейчас строк всего 4310.
-            if one_word in list.row(row)[3].value:   # Если значение в столбце под индексом 3 (толбец с переводом), соответствует переменной mes, то
-                id_maybe_answer_links.append(int(list.row(row)[2].value)) #добавляет его id в список возможных
 
-                # --------------это можно куда-то перенести в другое место
-                tx_maybe_answer_links.append(list.row(row)[4].value+'- '+list.row(row)[3].value) # тут составили текст, который будет отображаться на кнопке
-                if len(tx_maybe_answer_links[-1]) > 35:
-                    print('Знаков на кнопке больше 35 - ',tx_maybe_answer_links[-1])
-                # --------------это можно куда-то перенести в другое место
 
-                ru_trans = list.row(row)[3].value.split(',') # разделяем по запятой значения с ответами
-                sum_verbs_in_the_row = 0 # Тут будем считать сколько подходящих нам слов в этой строке. Пока - 0.
-                for word in ru_trans:
-                    word = word.lstrip()  # убрали пробелы вначале текста в строке
-                    if word[0: len(one_word)] == one_word and sum_verbs_in_the_row == 0: # если первые символы каждого слова(слово имеется ввиду, текст между запятыми) равны смс-запросу. И это первая проверка в строке, то
-                        id_answer_links.append(int(list.row(row)[2].value)) #добавляем id перевода который, точно подходит. Верный перевод.
-                        sum_verbs_in_the_row += 1 # Увеличиваем счетчик слов в строке на 1
-    # Сначала определим есть ли подходящие ответы. Если нет, то тогда предоставим примерные ответы по запросу.
-    if len(id_answer_links) != 0:
-        id_maybe_answer_links = id_answer_links #если подходящие ответы есть, то дальше будем делать все манипуляции с этим списком ответов
-        status_searching = 'Ответ в файле есть.'
-    if len(id_maybe_answer_links) == 1:
-        ts_plus_id_answer_links = int(constants1.table_start)+int(id_maybe_answer_links[0]) #constants1.table_start - это начало таблицы. помогает быстро найти строку в таблиуе. Для поска прибавляем эту констунту к id глагола
-        # ниже определяем, печатать ли в ответе дополнительные кнопки с пассивной формой
-        if str(list.row(int(ts_plus_id_answer_links))[179].value) != "":
-            key = make_batton_imper(message, str(ts_plus_id_answer_links),add_buttons="all")
-        else:
-            key = make_batton_imper(message, str(ts_plus_id_answer_links), add_buttons="imper")
-        answer = send_table(message, ts_plus_id_answer_links, kind_of_table="short") # тут срабатывет функция send_table
-        bot.send_message(message.chat.id, answer, reply_markup=key, parse_mode='Markdown',disable_web_page_preview=True) # disable_web_page_preview=True - это для того, чтоб сниппет не отправлялся
-        log(message, send_table(message, ts_plus_id_answer_links, kind_of_table="short"))
-    elif len(id_maybe_answer_links) > 1:
-        namber_bort = 1
-        key = make_battons(message, id_maybe_answer_links, status_searching, int(namber_bort))
-        if status_searching == 'Ответа в файле нет.':
-            answer_for_report = 'Извините, я еще не знаю этого глагола. Возможно вы искали(борт-' + str(namber_bort) + ':\n-' + str(id_maybe_answer_links) + '\n'
-            answer = "Извините, я еще не знаю этого глагола. Возможно вы искали:"
-        elif status_searching == 'Ответ в файле есть.':
-            answer_for_report = 'Есть несколько подходящих ответов(борт-'+str(namber_bort)+':\n-' + str(id_maybe_answer_links) + '\n'
-            answer = "Есть несколько подходящих ответов:"
-        bot.send_message(message.chat.id, text=answer, reply_markup=key)
-        log(message, answer_for_report)
+    elif ad.is_cyrillic(message.text) == False and ad.is_hebrew(message.text) == False:
+        answer = 'Извините, я еще не знаю глагола "*' + message.text + '*".\nВозможно вы ввели текст на неизвестном мне языке.\nЯ понимаю Русский и עברית. Попробуй снова.'
+        bot.send_message(message.chat.id, answer, parse_mode='Markdown')
+        log(message, answer)
 
-    else: # если нет ответов совсем
-        from alphabet_detector import AlphabetDetector #библеотека опрелеяет тип букв. Мне нужны иврит и кириллица
-        ad = AlphabetDetector()
-        if ad.is_cyrillic(message.text) == False and ad.is_hebrew(message.text) == False:
-            answer = 'Извините, я еще не знаю глагола "*' + message.text+'*".\nВозможно вы ввели текст на неизвестном мне языке.\nЯ понимаю Русский и עברית. Попробуй снова.'
-            bot.send_message(message.chat.id, answer, parse_mode='Markdown')
-            log(message, answer)
-        else:
+
+    elif ad.is_cyrillic(message.text) == True: # на кириллице
+        status_searching = 'Ответа в файле нет.'
+        mes = message.text
+        mes = mes.lower() # Все буквы меняем на мленькие
+        mes = mes.split(',')  # разделяем по запятой смс-запрос
+        id_maybe_answer_links = []
+        tx_maybe_answer_links = []
+        id_answer_links = [] #Это нужный список, туда будем добавлять, все верное.
+        for one_word in mes:
+            one_word = one_word.lstrip()  # убрали пробелы вначале текста в смс-запросе
+            for row in range(2, 4307): # Открываем каждую строку поочереди начиная со третей строки (шапку не читаем). Сейчас строк всего 4310.
+                if one_word in list.row(row)[3].value:   # Если значение в столбце под индексом 3 (толбец с переводом), соответствует переменной mes, то
+                    id_maybe_answer_links.append(int(list.row(row)[2].value)) #добавляет его id в список возможных
+
+                    # --------------это можно куда-то перенести в другое место
+                    tx_maybe_answer_links.append(list.row(row)[4].value+'- '+list.row(row)[3].value) # тут составили текст, который будет отображаться на кнопке
+                    if len(tx_maybe_answer_links[-1]) > 35:
+                        print('Знаков на кнопке больше 35 - ',tx_maybe_answer_links[-1])
+                    # --------------это можно куда-то перенести в другое место
+
+                    ru_trans = list.row(row)[3].value.split(',') # разделяем по запятой значения с ответами
+                    sum_verbs_in_the_row = 0 # Тут будем считать сколько подходящих нам слов в этой строке. Пока - 0.
+                    for word in ru_trans:
+                        word = word.lstrip() # убрали пробелы вначале текста в строке
+                        if word[0: len(one_word)] == one_word and sum_verbs_in_the_row == 0: # если первые символы каждого слова(слово имеется ввиду, текст между запятыми) равны смс-запросу. И это первая проверка в строке, то
+                            id_answer_links.append(int(list.row(row)[2].value)) #добавляем id перевода который, точно подходит. Верный перевод.
+                            sum_verbs_in_the_row += 1 # Увеличиваем счетчик слов в строке на 1
+        # Сначала определим есть ли подходящие ответы. Если нет, то тогда предоставим примерные ответы по запросу.
+        if len(id_answer_links) != 0:
+            id_maybe_answer_links = id_answer_links #если подходящие ответы есть, то дальше будем делать все манипуляции с этим списком ответов
+            status_searching = 'Ответ в файле есть.'
+        if len(id_maybe_answer_links) == 1:
+            ts_plus_id_answer_links = int(constants1.table_start)+int(id_maybe_answer_links[0]) #constants1.table_start - это начало таблицы. помогает быстро найти строку в таблиуе. Для поска прибавляем эту констунту к id глагола
+            # ниже определяем, печатать ли в ответе дополнительные кнопки с пассивной формой
+            if str(list.row(int(ts_plus_id_answer_links))[179].value) != "":
+                key = make_batton_imper(message, str(ts_plus_id_answer_links),add_buttons="all")
+            else:
+                key = make_batton_imper(message, str(ts_plus_id_answer_links), add_buttons="imper")
+            answer = send_table(message, ts_plus_id_answer_links, kind_of_table="short") # тут срабатывет функция send_table
+            bot.send_message(message.chat.id, answer, reply_markup=key, parse_mode='Markdown',disable_web_page_preview=True) # disable_web_page_preview=True - это для того, чтоб сниппет не отправлялся
+            log(message, send_table(message, ts_plus_id_answer_links, kind_of_table="short"))
+        elif len(id_maybe_answer_links) > 1:
+            namber_bort = 1
+            key = make_battons(message, id_maybe_answer_links, status_searching, int(namber_bort))
+            if status_searching == 'Ответа в файле нет.':
+                answer_for_report = 'Извините, я еще не знаю этого глагола. Возможно вы искали(борт-' + str(namber_bort) + ':\n-' + str(id_maybe_answer_links) + '\n'
+                answer = "Извините, я еще не знаю этого глагола. Возможно вы искали:"
+            elif status_searching == 'Ответ в файле есть.':
+                answer_for_report = 'Есть несколько подходящих ответов(борт-'+str(namber_bort)+':\n-' + str(id_maybe_answer_links) + '\n'
+                answer = "Есть несколько подходящих ответов:"
+            bot.send_message(message.chat.id, text=answer, reply_markup=key)
+            log(message, answer_for_report)
+
+        else: # если нет ответов совсем
             answer = 'Извините, я еще не знаю глагола "*'+message.text+'*"\n_Если Вы считаете, что он важен, отправь этот глагол на проверку. И я проверю его очень быстро._Так же Вы можете проверить Ваш запрос, возможно в слове есть очепятки.'
             key = telebot.types.InlineKeyboardMarkup()
             but = telebot.types.InlineKeyboardButton(text='Отправить глагол.',callback_data='88888888')
             key.add(but)
             bot.send_message(message.chat.id, answer, parse_mode='Markdown', reply_markup=key)
             log(message, answer)
+
+
+    elif ad.is_hebrew(message.text) == True:  # если завпрос на иврите. Тут буду искть только точное совпадение.
+        if ',' in message.text:
+            answer = 'Вы написали несколько слов через запятую ",". Я могу найти только один глагол за 1 раз. Попробуй снова сделать запрос.'
+            bot.send_message(message.chat.id, answer, parse_mode='Markdown')
+            log(message, answer)
+        else:
+            mes = message.text
+            mes = mes.strip() # убрали пробелы вначале и вконце текста
+            status_searching = 'Ответа в файле нет.' # это возможно можно убрать
+            id_maybe_answer_links = []
+            id_answer_links = []  # Это нужный список, туда будем добавлять, все верное.
+            for row in constants1.rows_verbs_bin5: # Открываем каждую строку поочереди начиная со третей строки (шапку не читаем). Сейчас строк всего 4310.
+                if str(mes) in str(list.row(row)[int(180)].value): #если похожее слово в ячейке и ранее мф еще не нашли других похожих слов в этой строке, то...
+                    if list.row(row)[2].value not in id_maybe_answer_links:
+                        id_maybe_answer_links.append(int(list.row(row)[2].value)) #добавляет его id в список возможных
+                    verb_all_forms = list.row(row)[180].value.split(',')  # разделяем по запятой значения с ответами
+                    for word in verb_all_forms:
+                        word = word.strip()  # убрали пробелы вначале и вконце текста в каждом слове
+                        if word == mes:  # если первые символы каждой формы слова(слово имеется ввиду, текст между запятыми) равны смс-запросу. И это первая проверка в строке, то
+                            if list.row(row)[2].value not in id_answer_links:
+                                id_answer_links.append(int(list.row(row)[2].value))  # добавляем id перевода который, точно подходит. Верный перевод.
+
+            if len(id_answer_links) == 0:
+                answer = "Извините, нет ни одного глагола ни в одной форме ни в одном времени в таком написании - "+mes+". Возможно в слове есть опечатка. Сделайте запрос снова."
+                bot.send_message(message.chat.id, answer, parse_mode='Markdown')#, #reply_markup=key)
+                log(message, answer)
+
+            else:
+                status_searching = 'Ответ в файле есть.' # убрать
+                id_maybe_answer_links = id_answer_links
+                key = telebot.types.InlineKeyboardMarkup()
+                for one_id in id_maybe_answer_links:
+                    call_data = str(one_id)
+                    row = int(one_id + constants1.table_start)
+                    text = mes+"- "+str(list.row(row)[int(3)].value)
+                    but = telebot.types.InlineKeyboardButton(text=text, callback_data=call_data)
+                    key.add(but)
+                answer = "Вот, что удалось найти в базе знаний:"
+                bot.send_message(message.chat.id, answer, parse_mode='Markdown', reply_markup=key)
+                log(message, answer)
+
 
 # эта функция обрабатывает все нажатые кнопки
 @bot.callback_query_handler(func=lambda call: True)

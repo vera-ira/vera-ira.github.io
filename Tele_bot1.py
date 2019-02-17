@@ -3,27 +3,22 @@
 # -*- coding: utf-8 -*-
 
 import telebot
-import constants1
-import os
-import random
-import urllib.request as urllib2
 from alphabet_detector import AlphabetDetector  # библеотека опрелеяет тип букв. Мне нужны иврит и кириллица
 import xlrd
 import json
-import fsm_telebot
-from fsm_telebot.storage.memory import MemoryStorage
-from langdetect import detect
-from telebot import types
 
-storage = MemoryStorage()
-bot = fsm_telebot.TeleBot(constants1.token, storage=storage)
-#bot = telebot.TeleBot(constants1.token)
+import constants1
+
+bot = telebot.TeleBot(constants1.token)
 bot.send_message(115496560, 'Бот перезагрузился')
 words_verb = xlrd.open_workbook('./Pealim_FINAL1.xlsx')
 list = words_verb.sheet_by_index(0)
 
+# Функция, которая задана в конце программы
+#def base():
+
 # функция, которая принтит данные о полученом смс от юзера и ответе на этот завтрос.
-def log (message,answer):
+def log(message,answer):
     print('\n ---------')
     from datetime import datetime
     print(datetime.now())
@@ -36,7 +31,7 @@ def alert_new_user(message):
     from datetime import datetime
     if str(message.from_user.id) != str(115496560):
         alert_for_admin = str("В гостях у нашего бота неизвестный пользователь.\nuser.first_name: "+message.from_user.first_name+".\nid: "+str(message.from_user.id)+"\nДата/время: "+str(datetime.now())+"\n\nТекст запроса от user: "+str(message.text))
-        bot.send_message(115496560, alert_for_admin)
+        bot.send_message(constants1.id_admin, alert_for_admin)
 
 # Эта функция формирует ответ со всеми формамт глагола в виде таблицы.
 def send_table(message, row, kind_of_table):
@@ -46,15 +41,15 @@ def send_table(message, row, kind_of_table):
         print('Вошли в def part2')
         i = ''
         if '~' in list.row(row)[colum + 1].value:
-            i = (list.row(row)[colum + 1].value + ' {_' + list.row(row)[colum + 2].value + '_}')
+            i = (list.row(row)[colum + 1].value + ' {' + list.row(row)[colum + 2].value + '}')
         else:
-            i = (' {_' + list.row(row)[colum + 2].value + '_}')
+            i = (' {' + list.row(row)[colum + 2].value + '}')
         ii = ''
         if list.row(row)[colum + 3].value != '':
             if '~' in list.row(row)[colum + 4].value:
-                ii = ('; ' + list.row(row)[colum + 3].value + list.row(row)[colum + 4].value + ' {_' + list.row(row)[colum + 5].value + '_}')
+                ii = ('; ' + list.row(row)[colum + 3].value + list.row(row)[colum + 4].value + ' {' + list.row(row)[colum + 5].value + '}')
             else:
-                ii = ('; ' + list.row(row)[colum + 3].value + ' {_' + list.row(row)[colum + 5].value + '_}')
+                ii = ('; ' + list.row(row)[colum + 3].value + ' {' + list.row(row)[colum + 5].value + '}')
         return i + ii
     I = '*אֲנִי*'
     YOU_M = '*אַתָּה*'
@@ -66,46 +61,44 @@ def send_table(message, row, kind_of_table):
     YOU_WW = '*אַתֶּן*'
     THEY_MM = '*הֵם*'
     THEY_WW = '*הֵן*'
-    Z = '*ז"*'
-    N = '*נ"*'
+    Z = '*ז.*'
+    N = '*נ.*'
     ZR = '*ז"ר*'
     NR = '*ז"ר*'
-    answer1 = ('ע"ב '+"[@ivrit_bot](https://t.me/ivrit_bot)    \n"
-            '*глагол*: '+list.row(row)[4].value+part2(4,row)+
-            #'*инф.*: '
-            '\n' + list.row(row)[3].value+ '\n'
-            '*биньян.*: '+list.row(row)[10].value+'\n'
-            '*корень*: '+list.row(row)[11].value+'\n'
+    answer1 = ('ע"ב ' + "[@ivrit_bot](https://t.me/ivrit_bot)\n"
+            + '*' + list.row(row)[3].value + '*' + '\n' + '\n'
+            'инфинитив: ' + '*' + list.row(row)[4].value + '*' + part2(4,row) + '\n'
+            'биньян: ' + '*' + list.row(row)[10].value+ '*' + ' корень: ' + '*' + list.row(row)[11].value + '*' + '\n'
             '*наст. вр.*:' + '\n'
-            + Z + '-       '+list.row(row)[17].value +part2(17,row)+'\n'
-            + N + '-       '+ list.row(row)[23].value +part2(23,row)+'\n'
-            + ZR + '-     '+ list.row(row)[29].value +part2(29,row)+'\n'
-            + NR + '-     '+ list.row(row)[35].value +part2(35,row)+'\n'
+            + Z + '-       ' + '*' + list.row(row)[17].value + '*' + part2(17,row)+'\n'
+            + N + '-       ' + '*' + list.row(row)[23].value + '*' + part2(23,row)+'\n'
+            + ZR + '-     ' + '*' + list.row(row)[29].value + '*' + part2(29,row)+'\n'
+            + NR + '-     ' + '*' + list.row(row)[35].value + '*' + part2(35,row)+'\n'
             '*прошед. вр.*:' + '\n'
-            + I + '-      ' + list.row(row)[41].value +part2(41,row)+ '\n'
-            + YOU_M + '-   ' + list.row(row)[47].value +part2(47,row)+ '\n'
-            + YOU_W + '-      ' + list.row(row)[53].value +part2(53,row)+ '\n'
-            + HE + '-     ' + list.row(row)[59].value +part2(59,row)+ '\n'
-            + SHE + '-     ' + list.row(row)[65].value +part2(65,row)+ '\n'
-            + WE + '-  ' + list.row(row)[71].value +part2(71,row)+ '\n'
-            + YOU_MM + '-   ' + list.row(row)[77].value +part2(77,row)+ '\n'
-            + YOU_WW + '-     ' + list.row(row)[83].value +part2(83,row)+ '\n'
-            + THEY_MM + '/' + THEY_WW + '- ' + list.row(row)[89].value +part2(89,row)+ '\n'
+            + I + '-      ' + '*' + list.row(row)[41].value + '*' + part2(41,row)+ '\n'
+            + YOU_M + '-   ' + '*' + list.row(row)[47].value + '*' + part2(47,row)+ '\n'
+            + YOU_W + '-      ' + '*' + list.row(row)[53].value + '*' + part2(53,row)+ '\n'
+            + HE + '-     ' + '*' + list.row(row)[59].value + '*' + part2(59,row)+ '\n'
+            + SHE + '-     ' + '*' + list.row(row)[65].value + '*' + part2(65,row)+ '\n'
+            + WE + '-  ' + '*' + list.row(row)[71].value + '*' + part2(71,row)+ '\n'
+            + YOU_MM + '-   ' + '*' + list.row(row)[77].value + '*' + part2(77,row)+ '\n'
+            + YOU_WW + '-     ' + '*' + list.row(row)[83].value + '*' + part2(83,row)+ '\n'
+            + THEY_MM + '/' + THEY_WW + '- ' + '*' + list.row(row)[89].value + '*' + part2(89,row)+ '\n'
             '*буд. вр.*:' + '\n'
-            + I + '-     ' + list.row(row)[95].value +part2(95,row)+ '\n'
-            + YOU_M + '-   ' + list.row(row)[101].value +part2(101,row)+ '\n'
-            + YOU_W + '-      ' + list.row(row)[107].value +part2(107,row)+ '\n'
-            + HE + '-     ' + list.row(row)[113].value +part2(113,row)+ '\n'
-            + SHE + '-     ' + list.row(row)[119].value +part2(119,row)+ '\n'
-            + WE + '-  ' + list.row(row)[125].value +part2(125,row)+ '\n'
-            + YOU_MM + '-   ' + list.row(row)[131].value +part2(131,row)+ '\n'
-            + YOU_WW + '-     ' + list.row(row)[137].value +part2(137,row)+ '\n'
-            + THEY_MM + '/' + THEY_WW + '- ' + list.row(row)[143].value +part2(143,row)+ '\n')
+            + I + '-     ' + '*' + list.row(row)[95].value + '*' + part2(95,row)+ '\n'
+            + YOU_M + '-   ' + '*' + list.row(row)[101].value + '*' + part2(101,row)+ '\n'
+            + YOU_W + '-      ' + '*' + list.row(row)[107].value + '*' + part2(107,row)+ '\n'
+            + HE + '-     ' + '*' + list.row(row)[113].value + '*' + part2(113,row)+ '\n'
+            + SHE + '-     ' + '*' + list.row(row)[119].value + '*' + part2(119,row)+ '\n'
+            + WE + '-  ' + '*' + list.row(row)[125].value + '*' + part2(125,row)+ '\n'
+            + YOU_MM + '-   ' + '*' + list.row(row)[131].value + '*' + part2(131,row)+ '\n'
+            + YOU_WW + '-     ' + '*' + list.row(row)[137].value + '*' + part2(137,row)+ '\n'
+            + THEY_MM + '/' + THEY_WW + '- ' + '*' + list.row(row)[143].value + '*' + part2(143,row) + '\n')
     answer2 = ('*пов. накл.*:' + '\n'
-            + Z + '-       ' + list.row(row)[155].value +part2(155,row)+'\n'
-            + N + '-       ' + list.row(row)[161].value +part2(161,row)+'\n'
-            + ZR + '-     ' + list.row(row)[167].value +part2(167,row)+'\n'
-            + NR + '-     ' + list.row(row)[173].value +part2(173,row)+'\n')
+            + Z + '-       ' + '*' + list.row(row)[155].value + '*' + part2(155,row)+'\n'
+            + N + '-       ' + '*' + list.row(row)[161].value + '*' + part2(161,row)+'\n'
+            + ZR + '-     ' + '*' + list.row(row)[167].value + '*' + part2(167,row)+'\n'
+            + NR + '-     ' + '*' + list.row(row)[173].value + '*' + part2(173,row)+'\n')
 
     footer = ('\n' +'_Сообщить об ошибке -_'+"[@vera_ira](https://t.me/vera_ira)")
     if kind_of_table == 'short':
@@ -222,7 +215,6 @@ def make_battons(message, id_maybe_answer_links, status_searching, namber_bort):
     many_battons.append(for_group_buttons) #тут добавляет в json файл новый
     with open("many_battons.json", "w") as file:
         json.dump(many_battons, file, ensure_ascii=True)
-        print("добавили данные о кнопках")
     return key  # эта строка должна быть в конце функции всей
 
 
@@ -252,10 +244,8 @@ def handle_text(message):
     alert_new_user(message)
     ad = AlphabetDetector()
 
-
     if '*' in message.text:
         bot.send_message(message.chat.id, 'Я не знаю такого символа * . Введите запрос заново.', parse_mode='Markdown')
-
 
     elif ad.is_cyrillic(message.text) == False and ad.is_hebrew(message.text) == False:
         answer = 'Извините, я еще не знаю глагола "*' + message.text + '*".\nВозможно вы ввели текст на неизвестном мне языке.\nЯ понимаю Русский и עברית. Попробуй снова.'
@@ -295,15 +285,15 @@ def handle_text(message):
             id_maybe_answer_links = id_answer_links #если подходящие ответы есть, то дальше будем делать все манипуляции с этим списком ответов
             status_searching = 'Ответ в файле есть.'
         if len(id_maybe_answer_links) == 1:
-            ts_plus_id_answer_links = int(constants1.table_start)+int(id_maybe_answer_links[0]) #constants1.table_start - это начало таблицы. помогает быстро найти строку в таблиуе. Для поска прибавляем эту констунту к id глагола
+            row = int(constants1.table_start)+int(id_maybe_answer_links[0]) #constants1.table_start - это начало таблицы. помогает быстро найти строку в таблиуе. Для поска прибавляем эту констунту к id глагола
             # ниже определяем, печатать ли в ответе дополнительные кнопки с пассивной формой
-            if str(list.row(int(ts_plus_id_answer_links))[179].value) != "":
-                key = make_batton_imper(message, str(ts_plus_id_answer_links),add_buttons="all")
+            if str(list.row(int(row))[179].value) != "":
+                key = make_batton_imper(message, str(row),add_buttons="all")
             else:
-                key = make_batton_imper(message, str(ts_plus_id_answer_links), add_buttons="imper")
-            answer = send_table(message, ts_plus_id_answer_links, kind_of_table="short") # тут срабатывет функция send_table
+                key = make_batton_imper(message, str(row), add_buttons="imper")
+            answer = send_table(message, row, kind_of_table="short") # тут срабатывет функция send_table
             bot.send_message(message.chat.id, answer, reply_markup=key, parse_mode='Markdown',disable_web_page_preview=True) # disable_web_page_preview=True - это для того, чтоб сниппет не отправлялся
-            log(message, send_table(message, ts_plus_id_answer_links, kind_of_table="short"))
+            log(message, send_table(message, row, kind_of_table="short"))
         elif len(id_maybe_answer_links) > 1:
             namber_bort = 1
             key = make_battons(message, id_maybe_answer_links, status_searching, int(namber_bort))
@@ -342,18 +332,28 @@ def handle_text(message):
                         id_maybe_answer_links.append(int(list.row(row)[2].value)) #добавляет его id в список возможных
                     verb_all_forms = list.row(row)[180].value.split(',')  # разделяем по запятой значения с ответами
                     for word in verb_all_forms:
+                        word = word.strip("~") # убрали лишние символы
                         word = word.strip()  # убрали пробелы вначале и вконце текста в каждом слове
                         if word == mes:  # если первые символы каждой формы слова(слово имеется ввиду, текст между запятыми) равны смс-запросу. И это первая проверка в строке, то
                             if list.row(row)[2].value not in id_answer_links:
                                 id_answer_links.append(int(list.row(row)[2].value))  # добавляем id перевода который, точно подходит. Верный перевод.
 
             if len(id_answer_links) == 0:
-                answer = "Извините, нет ни одного глагола ни в одной форме ни в одном времени в таком написании - "+mes+". Возможно в слове есть опечатка. Сделайте запрос снова."
+                answer = "Извините, нет ни одного глагола ни в одном спряжении ни в одном времени в таком написании - "+mes+".\nВозможно в слове есть опечатка. Сделайте запрос снова."
                 bot.send_message(message.chat.id, answer, parse_mode='Markdown')#, #reply_markup=key)
                 log(message, answer)
 
+            elif len(id_answer_links) == 1:
+                row = int(id_answer_links[0])+constants1.table_start
+                if str(list.row(int(row))[179].value) != "":
+                    key = make_batton_imper(message, str(row), add_buttons="all")
+                else:
+                    key = make_batton_imper(message, str(row), add_buttons="imper")
+                answer = send_table(message, row, kind_of_table="short")  # тут срабатывет функция send_table
+                bot.send_message(message.chat.id, answer, reply_markup=key, parse_mode='Markdown',disable_web_page_preview=True)  # disable_web_page_preview=True - это для того, чтоб сниппет не отправлялся
+                log(message, send_table(message, row, kind_of_table="short"))
             else:
-                status_searching = 'Ответ в файле есть.' # убрать
+                status_searching = 'Ответ в файле есть.' #убрать
                 id_maybe_answer_links = id_answer_links
                 key = telebot.types.InlineKeyboardMarkup()
                 for one_id in id_maybe_answer_links:
@@ -365,7 +365,6 @@ def handle_text(message):
                 answer = "Вот, что удалось найти в базе знаний:"
                 bot.send_message(message.chat.id, answer, parse_mode='Markdown', reply_markup=key)
                 log(message, answer)
-
 
 # эта функция обрабатывает все нажатые кнопки
 @bot.callback_query_handler(func=lambda call: True)
@@ -385,11 +384,13 @@ def callback_inline(call):
             namber_id_msg_for_find = call_data[3]
             file = open("many_battons.json", "r")
             all_story_buttons = json.load(file)
+            meter = 0
             for request in all_story_buttons: # тут будем искать нужный нам словарь с даными о собранных ответах в джейсоне
-                if str(request["message.message_id"]) == str(namber_id_msg_for_find):
+                if str(request["message.message_id"]) == str(namber_id_msg_for_find) and meter == 0:
                     status_searching = str(request["info_buttons"]["status_searching"])
                     id_maybe_answer_links = request["info_buttons"]["id_maybe_answer_links"]
                     key = make_battons(call.message, id_maybe_answer_links, status_searching, int(namber_id_botr))
+                    meter += 1
                     continue
             if status_searching == 'Ответ в файле есть.':
                 answer_for_report = 'Есть несколько подходящих ответов (борт-'+namber_id_botr+':\n-' + str(id_maybe_answer_links) + '\n'
@@ -445,7 +446,5 @@ def callback_inline(call):
             bot.send_message(call.message.chat.id, text=answer, reply_markup=key, parse_mode='Markdown',disable_web_page_preview=True)
             log(call.message, answer)
 
-
 if __name__ == '__main__':
-    #bot.polling(none_stop=False, interval=0, timeout=20)
-    bot.polling(none_stop=True, interval=0) #Функция, которая обновляет постоянно информацю с сервера.
+    bot.polling(none_stop=True, interval=0)  # Функция, которая обновляет постоянно информацю с сервера.
